@@ -1,13 +1,14 @@
 package com.nelson.security.authservice.model;
 
+import com.nelson.security.authservice.model.Enums.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -26,12 +27,12 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    private String role = "USER"; // default role
+    @Enumerated(EnumType.STRING)
+    private Role role = Role.USER; // ahora usamos enum
 
-    // Spring Security requires these overrides
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null; // puedes luego devolver roles aquí si lo necesitas
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
