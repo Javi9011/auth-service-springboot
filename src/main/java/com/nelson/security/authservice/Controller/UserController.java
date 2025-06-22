@@ -24,31 +24,27 @@ public class UserController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Endpoint para registrar un nuevo usuario con rol USER
+    // ✅ Registrar nuevo usuario con rol USER
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody User user) {
-        // Validar si usuario ya existe
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             return ResponseEntity.badRequest().body("El nombre de usuario ya existe");
         }
 
-        // Asignar rol USER
         user.setRole(Role.USER);
-        // Encriptar contraseña
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-
         userRepository.save(user);
         return ResponseEntity.ok("Usuario registrado correctamente");
     }
 
-    // Endpoint para listar todos los usuarios (solo ADMIN)
+    // ✅ Listar todos los usuarios (solo ADMIN)
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
     public List<User> getUsers() {
         return userRepository.findAll();
     }
 
-    // Endpoint para obtener el perfil del usuario autenticado
+    // ✅ Obtener perfil del usuario autenticado
     @GetMapping("/profile")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<User> getProfile(Authentication authentication) {
@@ -56,5 +52,36 @@ public class UserController {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
         return ResponseEntity.ok(user);
+    }
+
+    // ✅ Promover usuario a ADMIN (solo ADMIN puede hacerlo)
+    @PutMapping("/promote/{username}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> promoteToAdmin(@PathVariable String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+        user.setRole(Role.ADMIN);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Usuario promovido a ADMIN");
+    }
+
+    // ✅ Eliminar usuario por ID (solo ADMIN)
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> deleteUser(@PathVariable Long id, Authentication authentication) {
+        if (!userRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Previene que un ADMIN se elimine a sí mismo
+        User userToDelete = userRepository.findById(id).orElseThrow();
+        if (userToDelete.getUsername().equals(authentication.getName())) {
+            return ResponseEntity.badRequest().body("No puedes eliminar tu propio usuario");
+        }
+
+        userRepository.deleteById(id);
+        return ResponseEntity.ok("Usuario eliminado con éxito");
     }
 }
